@@ -15,7 +15,7 @@
             "if(!(is_admin)) { error \"Admin rights are required, please run 'sudo scoop install `$app'\"; exit 1 }",
             "Get-ChildItem `$dir -filter '*Windows Compatible.*' | ForEach-Object {",
             "    New-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts' -Name `$_.Name.Replace(`$_.Extension, ' (TrueType)') -Value `$_.Name -Force | Out-Null",
-            "    Copy-Item \"`$dir\\`$_\" -destination \"`$env:windir\\Fonts\"",
+            "    Copy-Item `$_.FullName -destination \"`$env:windir\\Fonts\"",
             "}"
         ]
     },
@@ -34,23 +34,34 @@
 
 $fontNames = @(
     "3270",
+    "Agave",
     "AnonymousPro",
+    "Arimo",
     "AurulentSansMono",
+    "BigBlueTerminal",
     "BitstreamVeraSansMono",
+    "CascadiaCode",
     "CodeNewRoman",
+    "Cousine",
+    "DaddyTimeMono",
     "DejaVuSansMono",
     "DroidSansMono",
     "FantasqueSansMono",
     "FiraCode",
     "FiraMono",
+    "Go-Mono",
     "Gohu",
     "Hack",
     "Hasklig",
     "HeavyData",
     "Hermit",
+    "iA-Writer",
+    "IBMPlexMono",
     "Inconsolata",
     "InconsolataGo",
+    "InconsolataLGC",
     "Iosevka",
+    "JetBrainsMono",
     "Lekton",
     "LiberationMono",
     "Meslo",
@@ -58,6 +69,9 @@ $fontNames = @(
     "Monoid",
     "Mononoki",
     "MPlus",
+    "Noto",
+    "OpenDyslexic",
+    "Overpass",
     "ProFont",
     "ProggyClean",
     "RobotoMono",
@@ -65,14 +79,36 @@ $fontNames = @(
     "SourceCodePro",
     "SpaceMono",
     "Terminus",
+    "Tinos",
     "Ubuntu",
-    "UbuntuMono"
+    "UbuntuMono",
+    "VictorMono"
 )
+
+$frozenFiles = @(
+    "Bold",
+    "BoldItalic",
+    "CodeNewRoman",
+    "Gohu",
+    "Italic",
+    "Regular"
+)
+
 
 # Generate manifests
 $fontNames | ForEach-Object {
-    $templateString -replace "%name", $_ | Out-File -FilePath "$PSScriptRoot\..\$_-NF.json" -Encoding utf8
-}
+    # Create the manifest if it doesn't exist
+    $path = "$PSScriptRoot\..\bucket\$_-NF.json"
+    if (!(Test-Path $path)) {
+        $templateString -replace "%name", $_ | Out-File -FilePath $path -Encoding utf8
+    }
 
-# Use scoop's checkver script to autoupdate the manifests
-& $psscriptroot\checkver.ps1 * -u
+    # Update files that are not frozen
+    if (!$frozenFiles.Contains("$_")) { 
+        # Use scoop's checkver script to autoupdate the manifest
+        & $psscriptroot\checkver.ps1 "$_-NF" -u
+
+        # Sleep to avoid 429 errors from github's REST API
+        Start-Sleep 1
+    }
+}
